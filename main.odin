@@ -6,24 +6,28 @@ import "core:os"
 import "core:c"
 import "core:strings"
 import "vendor:glfw"
+import "core:math"
 import gl "vendor:OpenGL"
 
 WIDTH  	:: 2560
 HEIGHT 	:: 1440
-TITLE 	:: "Tutorial 06"
+TITLE 	:: "Tutorial 08"
 RED 	:: 0.0
 GREEN	:: 0.0
 BLUE	:: 0.0
 ALPHA	:: 0.0
-SCALE: f32 = 0.0
-DELTA: f32 = 0.005
-
+SCALE: f32 = 1.0
+DELTA: f32 = 0.01
+ANGLE_IN_RADIANS: f32 = 0.0
+LOC: f32 = 0.0
 
 // @note You might need to lower this to 3.3 depending on how old your graphics card is.
 GL_MAJOR_VERSION :: 4
 GL_MINOR_VERSION :: 6
 VBO: u32
 gTranslationLocation: i32
+gRotationLocation: i32
+gScalingLocation: i32
 
 main :: proc() {
 	if !bool(glfw.Init()) {
@@ -74,14 +78,26 @@ render_scene :: proc() {
 	gl.ClearColor(RED, GREEN, BLUE, ALPHA)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-	SCALE += DELTA
-	if SCALE >= 1.0 || SCALE <= -1.0 {
+	// ANGLE_IN_RADIANS += DELTA;
+	// if ANGLE_IN_RADIANS >= 1.5708 || ANGLE_IN_RADIANS <= -1.5708 {
+	// 	DELTA *= -1.0
+	// }
+
+	SCALE = 1.5
+
+	LOC += DELTA
+	if LOC >= 0.5 || LOC <= -0.5 {
 		DELTA *= -1.0
 	}
 
-	Translation := linalg.Matrix4f32{1.0, 0.0, 0.0, SCALE * 2, 0.0, 1.0, 0.0, SCALE, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0}
+	Translation := linalg.Matrix4f32{1.0, 0.0, 0.0, LOC, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0}
+	Rotation:= linalg.Matrix4f32{math.cos_f32(ANGLE_IN_RADIANS), -math.sin_f32(ANGLE_IN_RADIANS), 0.0, 0.0, math.sin_f32(ANGLE_IN_RADIANS), math.cos_f32(ANGLE_IN_RADIANS), 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0}
+	Scaling := linalg.Matrix4f32{SCALE, 0.0, 0.0, 0.0, 0.0, SCALE, 0.0, 0.0, 0.0, 0.0, SCALE, 0.0, 0.0, 0.0, 0.0, 1.0}
+	FinalTransform := Scaling * Translation;
 
-	gl.UniformMatrix4fv(gTranslationLocation, 1, gl.FALSE, &Translation[0][0])
+	// gl.UniformMatrix4fv(gTranslationLocation, 1, gl.FALSE, &Translation[0][0])
+	// gl.UniformMatrix4fv(gRotationLocation, 1, gl.FALSE, &Rotation[0][0])
+	gl.UniformMatrix4fv(gScalingLocation, 1, gl.FALSE, &FinalTransform[0][0])
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
 	gl.EnableVertexAttribArray(0)
@@ -135,9 +151,21 @@ compile_gpu_program :: proc() {
 		os.exit(1)
 	}
 
-	gTranslationLocation = gl.GetUniformLocation(shader_program, "gTranslation")
-	if gTranslationLocation == -1 {
-		fmt.print("Error getting uniform location of gtranslation")
+	// gTranslationLocation = gl.GetUniformLocation(shader_program, "gTranslation")
+	// if gTranslationLocation == -1 {
+	// 	fmt.print("Error getting uniform location of gtranslation")
+	// 	os.exit(1)
+	// }
+
+	// gRotationLocation = gl.GetUniformLocation(shader_program, "gRotation")
+	// if gRotationLocation == -1 {
+	// 	fmt.print("Error getting uniform location of gRotation")
+	// 	os.exit(1)
+	// }
+
+	gScalingLocation = gl.GetUniformLocation(shader_program, "gScaling")
+	if gScalingLocation == -1 {
+		fmt.print("Error getting uniform location of gScaling")
 		os.exit(1)
 	}
 
