@@ -8,6 +8,7 @@ import "core:strings"
 import "vendor:glfw"
 import "core:math"
 import gl "vendor:OpenGL"
+import "math3d"
 
 WIDTH  	:: 2560
 HEIGHT 	:: 1440
@@ -55,7 +56,6 @@ main :: proc() {
 
 	// Load OpenGL context or the "state" of OpenGL.
 	glfw.MakeContextCurrent(window_handle)
-	glfw.MakeContextCurrent(window_handle)
 	glfw.SwapInterval(1)
 	// Load OpenGL function pointers with the specficed OpenGL major and minor version.
 	gl.load_up_to(GL_MAJOR_VERSION, GL_MINOR_VERSION, glfw.gl_set_proc_address)
@@ -83,16 +83,16 @@ render_scene :: proc() {
 	// 	DELTA *= -1.0
 	// }
 
-	SCALE = 1.5
+	SCALE = 0.5
 
 	LOC += DELTA
 	if LOC >= 0.5 || LOC <= -0.5 {
 		DELTA *= -1.0
 	}
 
-	Translation := linalg.Matrix4f32{1.0, 0.0, 0.0, LOC, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0}
+	Translation := math3d.initTranslateTransform(LOC, 0.0, 0.0)
 	Rotation:= linalg.Matrix4f32{math.cos_f32(ANGLE_IN_RADIANS), -math.sin_f32(ANGLE_IN_RADIANS), 0.0, 0.0, math.sin_f32(ANGLE_IN_RADIANS), math.cos_f32(ANGLE_IN_RADIANS), 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0}
-	Scaling := linalg.Matrix4f32{SCALE, 0.0, 0.0, 0.0, 0.0, SCALE, 0.0, 0.0, 0.0, 0.0, SCALE, 0.0, 0.0, 0.0, 0.0, 1.0}
+	Scaling := math3d.initScaleTransform(SCALE, SCALE, SCALE)
 	FinalTransform := Scaling * Translation;
 
 	// gl.UniformMatrix4fv(gTranslationLocation, 1, gl.FALSE, &Translation[0][0])
