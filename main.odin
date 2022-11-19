@@ -5,10 +5,12 @@ import "core:math/linalg"
 import "core:os"
 import "core:c"
 import "core:strings"
+import "core:runtime"
 import "vendor:glfw"
 import "core:math"
 import gl "vendor:OpenGL"
 import "math3d"
+import "camera"
 
 WIDTH  	:: 2560
 HEIGHT 	:: 1440
@@ -29,12 +31,14 @@ VBO: u32
 gTranslationLocation: i32
 gRotationLocation: i32
 gScalingLocation: i32
+gameCamera: camera.Camera = camera.Camera{1.0, linalg.Vector3f32{0.0, 0.0, 0.0}, linalg.Vector3f32{0.0, 0.0, 0.0}, linalg.Vector3f32{0.0, 0.0, 0.0}}
 
 main :: proc() {
 	if !bool(glfw.Init()) {
 		fmt.eprintln("GLFW has failed to load.")
 		return 
 	}
+
 	
 	glfw.WindowHint(glfw.RESIZABLE, 1)
 	glfw.WindowHint(glfw.DEPTH_BITS, 24)
@@ -55,6 +59,7 @@ main :: proc() {
 	}
 
 	// Load OpenGL context or the "state" of OpenGL.
+	glfw.SetKeyCallback(window_handle, keyboardCB)
 	glfw.MakeContextCurrent(window_handle)
 	glfw.SwapInterval(1)
 	// Load OpenGL function pointers with the specficed OpenGL major and minor version.
@@ -201,4 +206,9 @@ add_gpu_program :: proc(shader_program: u32, shader_text: string, shader_type: u
 		os.exit(0)
 	}
 	gl.AttachShader(shader_program, shader_object)
+}
+
+keyboardCB:: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods: i32) {
+	context = runtime.default_context()
+	camera.onKeyboard(key, &gameCamera)
 }
