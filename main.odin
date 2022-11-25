@@ -11,6 +11,7 @@ import "core:math"
 import gl "vendor:OpenGL"
 import "math3d"
 import "camera"
+import "core:math/rand"
 
 WIDTH  	:: 2560
 HEIGHT 	:: 1440
@@ -23,15 +24,36 @@ SCALE: f32 = 1.0
 DELTA: f32 = 0.01
 ANGLE_IN_RADIANS: f32 = 0.0
 LOC: f32 = 0.0
+FOV :: 45.0
+zNear :: 1.0
+zFar :: 10.0
+//RAND_MAX: f32 = 4294967295
 
 // @note You might need to lower this to 3.3 depending on how old your graphics card is.
 GL_MAJOR_VERSION :: 4
 GL_MINOR_VERSION :: 6
 VBO: u32
-gTranslationLocation: i32
-gRotationLocation: i32
-gScalingLocation: i32
+IBO: u32
+gWVPLocation: i32
+projectionInfo: math3d.PersProjInfo = math3d.PersProjInfo{FOV, WIDTH, HEIGHT, zNear, zFar}
 gameCamera: camera.Camera = camera.Camera{1.0, linalg.Vector3f32{0.0, 0.0, 0.0}, linalg.Vector3f32{0.0, 0.0, 0.0}, linalg.Vector3f32{0.0, 0.0, 0.0}}
+
+Vertex :: struct {
+	pos: linalg.Vector3f32,
+	color: linalg.Vector3f32,
+
+	empty: proc(),
+	vertex: proc(x: f32, y: f32, z: f32, using self: ^Vertex),
+}
+
+empty :: proc() {}
+vertex :: proc(x: f32, y: f32, z: f32, using self: ^Vertex) {
+	self.pos = linalg.Vector3f32{x, y, z}
+	// red: f32 = rand.float32(&rng) / RAND_MAX
+	// green: f32 = rand.float32(&rng) / RAND_MAX
+	// blue: f32 = rand.float32(&rng) / RAND_MAX
+	self.color = linalg.Vector3f32{0.5, 0.5, 0.5}
+}
 
 main :: proc() {
 	if !bool(glfw.Init()) {
@@ -66,7 +88,12 @@ main :: proc() {
 	gl.load_up_to(GL_MAJOR_VERSION, GL_MINOR_VERSION, glfw.gl_set_proc_address)
 	//gl.Enable(gl.DEPTH_TEST)
 	
+	gl.Enable(gl.CULL_FACE)
+	gl.FrontFace(gl.CW)
+	gl.CullFace(gl.BACK)
+
 	create_vertex_buffer()
+	create_index_buffer()
 	compile_gpu_program()
 	
 	for !glfw.WindowShouldClose(window_handle) {
@@ -83,44 +110,77 @@ render_scene :: proc() {
 	gl.ClearColor(RED, GREEN, BLUE, ALPHA)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-	// ANGLE_IN_RADIANS += DELTA;
-	// if ANGLE_IN_RADIANS >= 1.5708 || ANGLE_IN_RADIANS <= -1.5708 {
-	// 	DELTA *= -1.0
-	// }
+	YRoationAngle:f32 = 1.0
+	setPosition(0.0, 0.0, 0.0)
+	rotate(0.0, YRoationAngle, 0.0)
+	world:= getMatrix()
+	view:= camera.getMatrix(gameCamera)
+	projection:= math3d.initPersProjTransform(projectionInfo)
+	wvp:= projection * view * world
 
-	SCALE = 0.5
-
-	LOC += DELTA
-	if LOC >= 0.5 || LOC <= -0.5 {
-		DELTA *= -1.0
-	}
-
-	Translation := math3d.initTranslateTransform(LOC, 0.0, 0.0)
-	Rotation:= linalg.Matrix4f32{math.cos_f32(ANGLE_IN_RADIANS), -math.sin_f32(ANGLE_IN_RADIANS), 0.0, 0.0, math.sin_f32(ANGLE_IN_RADIANS), math.cos_f32(ANGLE_IN_RADIANS), 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0}
-	Scaling := math3d.initScaleTransform(SCALE, SCALE, SCALE)
-	FinalTransform := Scaling * Translation;
-
-	// gl.UniformMatrix4fv(gTranslationLocation, 1, gl.FALSE, &Translation[0][0])
-	// gl.UniformMatrix4fv(gRotationLocation, 1, gl.FALSE, &Rotation[0][0])
-	gl.UniformMatrix4fv(gScalingLocation, 1, gl.FALSE, &FinalTransform[0][0])
+	gl.UniformMatrix4fv(gWVPLocation, 1, gl.FALSE, &wvp[0][0])
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, IBO)
+
+	// position
 	gl.EnableVertexAttribArray(0)
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 0, 0)
-	gl.DrawArrays(gl.TRIANGLES, 0, 3)
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 6 * size_of(f32), 0)
+
+	// color
+	gl.EnableVertexAttribArray(1)
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 6 * size_of(f32), 3 * size_of(f32))
+
+	gl.DrawElements(gl.TRIANGLES, 36, gl.UNSIGNED_INT, rawptr(uintptr(0)))
 	gl.DisableVertexAttribArray(0)
+	gl.DisableVertexAttribArray(1)
+
+	
 }
 
 create_vertex_buffer :: proc() {
-	vertices := [3]linalg.Vector3f32{
-		linalg.Vector3f32{-1.0, -1.0, 0.0}, // bottom left
-		linalg.Vector3f32{1.0, -1.0, 0.0},  // bottom right
-		linalg.Vector3f32{0.0, 1.0, 0.0},   // top
-	}
+	v1:= Vertex{linalg.Vector3f32{}, linalg.Vector3f32{}, empty, vertex}
+	v2:= Vertex{linalg.Vector3f32{}, linalg.Vector3f32{}, empty, vertex}
+	v3:= Vertex{linalg.Vector3f32{}, linalg.Vector3f32{}, empty, vertex}
+	v4:= Vertex{linalg.Vector3f32{}, linalg.Vector3f32{}, empty, vertex}
+	v5:= Vertex{linalg.Vector3f32{}, linalg.Vector3f32{}, empty, vertex}
+	v6:= Vertex{linalg.Vector3f32{}, linalg.Vector3f32{}, empty, vertex}
+	v7:= Vertex{linalg.Vector3f32{}, linalg.Vector3f32{}, empty, vertex}
+	v8:= Vertex{linalg.Vector3f32{}, linalg.Vector3f32{}, empty, vertex}
+
+	v1.vertex(0.5, 0.5, 0.5, &v1)
+	v2.vertex(-0.5, 0.5, -0.5, &v2)
+	v3.vertex(-0.5, 0.5, 0.5, &v3)
+	v4.vertex(0.5, -0.5, -0.5, &v4)
+	v5.vertex(-0.5, -0.5, -0.5, &v5)
+	v6.vertex(0.5, 0.5, -0.5, &v6)
+	v7.vertex(0.5, -0.5, 0.5, &v7)
+	v8.vertex(-0.5, -0.5, 0.5, &v8)
+	vertices := [8]Vertex{v1, v2, v3, v4, v5, v6, v7, v8}
 
 	gl.GenBuffers(1, &VBO)
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), &vertices, gl.STATIC_DRAW)
+}
+
+create_index_buffer :: proc() {
+	indices: []uint = {
+		0, 1, 2,
+                1, 3, 4,
+                5, 6, 3,
+                7, 3, 6,
+                2, 4, 7,
+                0, 7, 6,
+                0, 5, 1,
+                1, 5, 3,
+                5, 0, 6,
+                7, 4, 3,
+                2, 1, 4,
+                0, 2, 7,
+	}
+	gl.GenBuffers(1, &IBO)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, IBO)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(indices), &indices, gl.STATIC_DRAW)
 }
 
 compile_gpu_program :: proc() {
@@ -156,21 +216,10 @@ compile_gpu_program :: proc() {
 		os.exit(1)
 	}
 
-	// gTranslationLocation = gl.GetUniformLocation(shader_program, "gTranslation")
-	// if gTranslationLocation == -1 {
-	// 	fmt.print("Error getting uniform location of gtranslation")
-	// 	os.exit(1)
-	// }
 
-	// gRotationLocation = gl.GetUniformLocation(shader_program, "gRotation")
-	// if gRotationLocation == -1 {
-	// 	fmt.print("Error getting uniform location of gRotation")
-	// 	os.exit(1)
-	// }
-
-	gScalingLocation = gl.GetUniformLocation(shader_program, "gScaling")
-	if gScalingLocation == -1 {
-		fmt.print("Error getting uniform location of gScaling")
+	gWVPLocation = gl.GetUniformLocation(shader_program, "gWVP")
+	if gWVPLocation == -1 {
+		fmt.print("Error getting uniform location of gWVP")
 		os.exit(1)
 	}
 

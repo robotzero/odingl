@@ -50,5 +50,21 @@ onKeyboard::proc (key: i32, camera: ^Camera) {
 }
 
 getMatrix::proc(gameCamera: Camera) -> linalg.Matrix4x4f32 {
-	
+	return initCameraTransform(gameCamera.pos, gameCamera.target, gameCamera.up)
+}
+
+initCameraTransform::proc(pos: linalg.Vector3f32, target: linalg.Vector3f32, up: linalg.Vector3f32) -> linalg.Matrix4x4f32 {
+	return initCameraTransform2(target, up) * initTranslationTransform(-pos.x, -pos.y, -pos.z)
+}
+
+initTranslationTransform::proc(x: f32, y: f32, z: f32) -> linalg.Matrix4x4f32 {
+	return linalg.Matrix4f32{1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, x, y, z, 1.0}
+}
+
+initCameraTransform2::proc(target: linalg.Vector3f32, up: linalg.Vector3f32) -> linalg.Matrix4x4f32 {
+	n:= linalg.vector_normalize(target)
+	upN:= linalg.vector_normalize(up)
+	u:= linalg.vector_normalize(linalg.vector_cross3(upN, n))
+	v:= linalg.vector_cross3(n, u)
+	return linalg.Matrix4x4f32{u.x, v.x, n.x, 0.0, u.y, v.y, n.y, 0.0, u.z, v.z, n.z, 0.0, 0.0, 0.0, 0.0, 1.0}
 }
