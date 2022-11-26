@@ -27,7 +27,7 @@ LOC: f32 = 0.0
 FOV :: 45.0
 zNear :: 1.0
 zFar :: 10.0
-//RAND_MAX: f32 = 4294967295
+RAND_MAX: f32 = 2147483647
 
 // @note You might need to lower this to 3.3 depending on how old your graphics card is.
 GL_MAJOR_VERSION :: 4
@@ -49,9 +49,9 @@ Vertex :: struct {
 empty :: proc() {}
 vertex :: proc(x: f32, y: f32, z: f32, using self: ^Vertex) {
 	self.pos = linalg.Vector3f32{x, y, z}
-	// red: f32 = rand.float32(&rng) / RAND_MAX
-	// green: f32 = rand.float32(&rng) / RAND_MAX
-	// blue: f32 = rand.float32(&rng) / RAND_MAX
+	red: f32 = rand.float32() / RAND_MAX
+	green: f32 = rand.float32() / RAND_MAX
+	blue: f32 = rand.float32() / RAND_MAX
 	self.color = linalg.Vector3f32{0.5, 0.5, 0.5}
 }
 
@@ -111,7 +111,7 @@ render_scene :: proc() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 	YRoationAngle:f32 = 1.0
-	setPosition(0.0, 0.0, 0.0)
+	setPosition(0.0, 0.0, 2.0)
 	rotate(0.0, YRoationAngle, 0.0)
 	world:= getMatrix()
 	view:= camera.getMatrix(gameCamera)
@@ -249,9 +249,11 @@ add_gpu_program :: proc(shader_program: u32, shader_text: string, shader_type: u
 	ok: i32
 	gl.GetShaderiv(shader_object, gl.COMPILE_STATUS, &ok)
 	if ok != 1 {
-		infoLog: [^]u8
-		gl.GetShaderInfoLog(shader_object, 1024, nil, infoLog)
+		infoLog: [1024]u8
+		gl.GetShaderInfoLog(shader_object, 1024, nil, &infoLog[0])
 		fmt.println("Unable to compile shader: {}", shader_object)
+		fmt.eprintln(string(infoLog[0:len(infoLog)-1]))
+		delete_cstring(data, context.temp_allocator)
 		os.exit(0)
 	}
 	gl.AttachShader(shader_program, shader_object)
