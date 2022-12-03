@@ -47,5 +47,5 @@ initPersProjTransform::proc(projectionInfo: PersProjInfo) -> linalg.Matrix4f32 {
 	ar: f32 = projectionInfo.Height / projectionInfo.Width
 	zrange: f32 = projectionInfo.zNear - projectionInfo.zFar
 	tanHalfFOV: f32 = math.tan_f32(toRadian(projectionInfo.FOV / 2.0))
-	return linalg.Matrix4f32{1/tanHalfFOV, 0.0, 0.0, 0.0, 0.0, 1.0/(tanHalfFOV*ar), 0.0, 0.0, 0.0, 0.0, (-projectionInfo.zNear - projectionInfo.zFar)/zrange, 1.0, 0.0, 0.0, 2.0*projectionInfo.zNear/zrange, 0.0}
+	return linalg.Matrix4f32{1/tanHalfFOV, 0.0, 0.0, 0.0, 0.0, 1.0/(tanHalfFOV*ar), 0.0, 0.0, 0.0, 0.0, (-projectionInfo.zNear - projectionInfo.zFar)/zrange, 1.0, 0.0, 0.0, 2.0*projectionInfo.zFar*projectionInfo.zNear/zrange, 0.0}
 }

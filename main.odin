@@ -6,6 +6,7 @@ import "core:os"
 import "core:c"
 import "core:strings"
 import "core:runtime"
+import "core:time"
 import "vendor:glfw"
 import "core:math"
 import gl "vendor:OpenGL"
@@ -15,7 +16,9 @@ import "core:math/rand"
 
 WIDTH  	:: 2560
 HEIGHT 	:: 1440
-TITLE 	:: "Tutorial 08"
+// WIDTH  	:: 800
+// HEIGHT 	:: 600
+TITLE 	:: "Tutorial 12"
 RED 	:: 0.0
 GREEN	:: 0.0
 BLUE	:: 0.0
@@ -27,8 +30,7 @@ LOC: f32 = 0.0
 FOV :: 45.0
 zNear :: 1.0
 zFar :: 10.0
-RAND_MAX: f32 = 2147483647
-
+watch            : time.Stopwatch
 // @note You might need to lower this to 3.3 depending on how old your graphics card is.
 GL_MAJOR_VERSION :: 4
 GL_MINOR_VERSION :: 6
@@ -36,23 +38,19 @@ VBO: u32
 IBO: u32
 gWVPLocation: i32
 projectionInfo: math3d.PersProjInfo = math3d.PersProjInfo{FOV, WIDTH, HEIGHT, zNear, zFar}
-gameCamera: camera.Camera = camera.Camera{1.0, linalg.Vector3f32{0.0, 0.0, 0.0}, linalg.Vector3f32{0.0, 0.0, 0.0}, linalg.Vector3f32{0.0, 0.0, 0.0}}
+gameCamera: camera.Camera = camera.Camera{1.0, linalg.Vector3f32{0.0, 0.0, 0.0}, linalg.Vector3f32{0.0, 0.0, 1.0}, linalg.Vector3f32{0.0, 1.0, 0.0}}
 
 Vertex :: struct {
 	pos: linalg.Vector3f32,
 	color: linalg.Vector3f32,
-
-	empty: proc(),
-	vertex: proc(x: f32, y: f32, z: f32, using self: ^Vertex),
 }
 
-empty :: proc() {}
 vertex :: proc(x: f32, y: f32, z: f32, using self: ^Vertex) {
 	self.pos = linalg.Vector3f32{x, y, z}
-	red: f32 = rand.float32() / RAND_MAX
-	green: f32 = rand.float32() / RAND_MAX
-	blue: f32 = rand.float32() / RAND_MAX
-	self.color = linalg.Vector3f32{0.5, 0.5, 0.5}
+	red: f32 = rand.float32()
+	green: f32 = rand.float32()
+	blue: f32 = rand.float32()
+	self.color = linalg.Vector3f32{red, green, blue}
 }
 
 main :: proc() {
@@ -60,7 +58,6 @@ main :: proc() {
 		fmt.eprintln("GLFW has failed to load.")
 		return 
 	}
-
 	
 	glfw.WindowHint(glfw.RESIZABLE, 1)
 	glfw.WindowHint(glfw.DEPTH_BITS, 24)
@@ -86,7 +83,6 @@ main :: proc() {
 	glfw.SwapInterval(1)
 	// Load OpenGL function pointers with the specficed OpenGL major and minor version.
 	gl.load_up_to(GL_MAJOR_VERSION, GL_MINOR_VERSION, glfw.gl_set_proc_address)
-	//gl.Enable(gl.DEPTH_TEST)
 	
 	gl.Enable(gl.CULL_FACE)
 	gl.FrontFace(gl.CW)
@@ -95,13 +91,12 @@ main :: proc() {
 	create_vertex_buffer()
 	create_index_buffer()
 	compile_gpu_program()
+	time.stopwatch_start(&watch)
 	
 	for !glfw.WindowShouldClose(window_handle) {
 		// Process all incoming events like keyboard press, window resize, and etc.
 		glfw.PollEvents()
-		
 		render_scene()
-		
 		glfw.SwapBuffers(window_handle)
 	}
 }
@@ -111,14 +106,48 @@ render_scene :: proc() {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
 	YRoationAngle:f32 = 1.0
-	setPosition(0.0, 0.0, 2.0)
-	rotate(0.0, YRoationAngle, 0.0)
-	world:= getMatrix()
-	view:= camera.getMatrix(gameCamera)
-	projection:= math3d.initPersProjTransform(projectionInfo)
-	wvp:= projection * view * world
+	//setPosition(0.0, 0.0, 1.5)
+	//rotate(0.0, YRoationAngle, 0.0)
+	// world:= getMatrix()
+	// view:= camera.getMatrix(gameCamera)
+	// projection:= math3d.initPersProjTransform(projectionInfo)
+	FF : f32 = 45
+	thfov := math.tan_f32(math3d.toRadian(FF/2.0))
+	f := 1/thfov
+	ar :f32= cast(f32) WIDTH / cast(f32) HEIGHT
+	near: f32 = 1
+	far: f32 = 100
+	zrange: f32 = near - far
+	A: f32 = (-far - near) / zrange
+	B: f32 = 2.0 * far * near / zrange
 
-	gl.UniformMatrix4fv(gWVPLocation, 1, gl.FALSE, &wvp[0][0])
+	SCALE += 0.02
+	
+	raw_duration        := time.stopwatch_duration(watch)
+	secs                := f32(time.duration_seconds(raw_duration))
+	theta               := f32(secs)
+	
+	rotation:=linalg.Matrix4f32{
+		math.cos_f32(theta), 0.0, -math.sin_f32(theta), 0.0, 
+		0.0, 1.0, 0.0, 0.0, 
+		math.sin_f32(theta), 0.0, math.cos_f32(theta), 0.0,
+		0.0, 0.0, 0.0, 1.0,
+	}
+	translation:=linalg.Matrix4f32{
+		1.0, 0.0, 0.0, 0.0, 
+		0.0, 1.0, 0.0, 0.0,
+		0.0, 0.0, 1.0, 2.0,
+		0.0, 0.0, 0.0, 1.0,
+	}
+	projection:=linalg.Matrix4f32{
+		f/ar, 0.0, 0.0, 0.0,
+		0.0, f, 0.0, 0.0,
+		0.0, 0.0, A, B,
+		0.0, 0.0, 1.0, 0.0,
+	}
+	final:=projection * translation * rotation
+	
+	gl.UniformMatrix4fv(gWVPLocation, 1, gl.FALSE, &final[0][0])
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, IBO)
@@ -131,7 +160,7 @@ render_scene :: proc() {
 	gl.EnableVertexAttribArray(1)
 	gl.VertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 6 * size_of(f32), 3 * size_of(f32))
 
-	gl.DrawElements(gl.TRIANGLES, 36, gl.UNSIGNED_INT, rawptr(uintptr(0)))
+	gl.DrawElements(gl.TRIANGLES, 36, gl.UNSIGNED_INT, nil)
 	gl.DisableVertexAttribArray(0)
 	gl.DisableVertexAttribArray(1)
 
@@ -139,23 +168,23 @@ render_scene :: proc() {
 }
 
 create_vertex_buffer :: proc() {
-	v1:= Vertex{linalg.Vector3f32{}, linalg.Vector3f32{}, empty, vertex}
-	v2:= Vertex{linalg.Vector3f32{}, linalg.Vector3f32{}, empty, vertex}
-	v3:= Vertex{linalg.Vector3f32{}, linalg.Vector3f32{}, empty, vertex}
-	v4:= Vertex{linalg.Vector3f32{}, linalg.Vector3f32{}, empty, vertex}
-	v5:= Vertex{linalg.Vector3f32{}, linalg.Vector3f32{}, empty, vertex}
-	v6:= Vertex{linalg.Vector3f32{}, linalg.Vector3f32{}, empty, vertex}
-	v7:= Vertex{linalg.Vector3f32{}, linalg.Vector3f32{}, empty, vertex}
-	v8:= Vertex{linalg.Vector3f32{}, linalg.Vector3f32{}, empty, vertex}
+	v1:= Vertex{}
+	vertex(0.5, 0.5, 0.5, &v1)
+	v2:= Vertex{}
+	vertex(-0.5, 0.5, -0.5, &v2)
+	v3:= Vertex{}
+	vertex(-0.5, 0.5, 0.5, &v3)
+	v4:= Vertex{}
+	vertex(0.5, -0.5, -0.5, &v4)
+	v5:= Vertex{}
+	vertex(-0.5,-0.5, -0.5, &v5)
+	v6:= Vertex{}
+	vertex(0.5, 0.5, -0.5, &v6)
+	v7:= Vertex{}
+	vertex(0.5, -0.5, 0.5, &v7)
+	v8:= Vertex{}
+	vertex(-0.5, -0.5, 0.5, &v8)
 
-	v1.vertex(0.5, 0.5, 0.5, &v1)
-	v2.vertex(-0.5, 0.5, -0.5, &v2)
-	v3.vertex(-0.5, 0.5, 0.5, &v3)
-	v4.vertex(0.5, -0.5, -0.5, &v4)
-	v5.vertex(-0.5, -0.5, -0.5, &v5)
-	v6.vertex(0.5, 0.5, -0.5, &v6)
-	v7.vertex(0.5, -0.5, 0.5, &v7)
-	v8.vertex(-0.5, -0.5, 0.5, &v8)
 	vertices := [8]Vertex{v1, v2, v3, v4, v5, v6, v7, v8}
 
 	gl.GenBuffers(1, &VBO)
@@ -164,7 +193,7 @@ create_vertex_buffer :: proc() {
 }
 
 create_index_buffer :: proc() {
-	indices: []uint = {
+	indices: [12 * 3]u32 = {
 		0, 1, 2,
                 1, 3, 4,
                 5, 6, 3,
@@ -178,6 +207,7 @@ create_index_buffer :: proc() {
                 2, 1, 4,
                 0, 2, 7,
 	}
+
 	gl.GenBuffers(1, &IBO)
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, IBO)
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(indices), &indices, gl.STATIC_DRAW)
@@ -218,6 +248,7 @@ compile_gpu_program :: proc() {
 
 
 	gWVPLocation = gl.GetUniformLocation(shader_program, "gWVP")
+
 	if gWVPLocation == -1 {
 		fmt.print("Error getting uniform location of gWVP")
 		os.exit(1)
@@ -262,4 +293,17 @@ add_gpu_program :: proc(shader_program: u32, shader_text: string, shader_type: u
 keyboardCB:: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods: i32) {
 	context = runtime.default_context()
 	camera.onKeyboard(key, &gameCamera)
+	if key == glfw.KEY_ESCAPE && action == glfw.PRESS {
+		glfw.SetWindowShouldClose(window, glfw.TRUE)
+	}
 }
+
+// A function which simply converts colors specified in hex
+// to a triple of floats ranging from 0 to 1.
+rgbHexToFractions :: proc( hex_color : int ) -> ( ret : [3] f32 ) {
+	ret.r = f32( (hex_color & 0x00_FF_00_00) >> 16 )
+	ret.g = f32( (hex_color & 0x00_00_FF_00) >> 8  )
+	ret.b = f32( (hex_color & 0x00_00_00_FF) >> 0  )
+	ret *= 1.0/255
+	return 
+    }
