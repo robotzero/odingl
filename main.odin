@@ -39,6 +39,9 @@ IBO: u32
 gWVPLocation: i32
 projectionInfo: math3d.PersProjInfo = math3d.PersProjInfo{FOV, WIDTH, HEIGHT, zNear, zFar}
 gameCamera: camera.Camera = camera.Camera{1.0, linalg.Vector3f32{0.0, 0.0, 0.0}, linalg.Vector3f32{0.0, 0.0, 1.0}, linalg.Vector3f32{0.0, 1.0, 0.0}}
+program: u32
+vertex_shader:= string(#load("vertex.glsl"))
+fragment_shader:= string(#load("fragment.glsl"))
 
 Vertex :: struct {
 	pos: linalg.Vector3f32,
@@ -90,7 +93,18 @@ main :: proc() {
 
 	create_vertex_buffer()
 	create_index_buffer()
-	compile_gpu_program()
+	//compile_gpu_program()
+	program_ok: bool;
+	program, program_ok = gl.load_shaders_source(vertex_shader, fragment_shader);
+	if !program_ok {
+		panic("failed to load and compiler shaders");
+	}
+	gl.UseProgram(program)
+	gWVPLocation = gl.GetUniformLocation(program, "gWVP")
+	if gWVPLocation == -1 {
+		fmt.print("Error getting uniform location of gWVP")
+		os.exit(1)
+	}
 	time.stopwatch_start(&watch)
 	
 	for !glfw.WindowShouldClose(window_handle) {
@@ -213,82 +227,82 @@ create_index_buffer :: proc() {
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(indices), &indices, gl.STATIC_DRAW)
 }
 
-compile_gpu_program :: proc() {
-	shader_program: u32 = gl.CreateProgram()
-	if (shader_program == 0) {
-		fmt.println("Error creating shader program")
-		os.exit(0)
-	}
-	vertex_shader, okv := os.read_entire_file_from_filename("vertex.glsl")
-	if !okv {
-		fmt.println("Error creating shader program")
-		os.exit(1)
-	}
+// compile_gpu_program :: proc() {
+// 	shader_program: u32 = gl.CreateProgram()
+// 	if (shader_program == 0) {
+// 		fmt.println("Error creating shader program")
+// 		os.exit(0)
+// 	}
+// 	vertex_shader, okv := os.read_entire_file_from_filename("vertex.glsl")
+// 	if !okv {
+// 		fmt.println("Error creating shader program")
+// 		os.exit(1)
+// 	}
 	
-	add_gpu_program(shader_program, string(vertex_shader), gl.VERTEX_SHADER)
-	defer delete(vertex_shader, context.allocator)
-	fragment_shader, okf := os.read_entire_file_from_filename("fragment.glsl")
+// 	add_gpu_program(shader_program, string(vertex_shader), gl.VERTEX_SHADER)
+// 	defer delete(vertex_shader, context.allocator)
+// 	fragment_shader, okf := os.read_entire_file_from_filename("fragment.glsl")
 
-	if !okf {
-		fmt.println("Error creating shader program")
-		os.exit(1)
-	}
-	add_gpu_program(shader_program, string(fragment_shader), gl.FRAGMENT_SHADER)
-	defer delete(fragment_shader, context.allocator)
+// 	if !okf {
+// 		fmt.println("Error creating shader program")
+// 		os.exit(1)
+// 	}
+// 	add_gpu_program(shader_program, string(fragment_shader), gl.FRAGMENT_SHADER)
+// 	defer delete(fragment_shader, context.allocator)
 
-	ok: i32
-	erroLog: [^]u8 = {}
-	gl.LinkProgram(shader_program)
-	gl.GetProgramiv(shader_program, gl.LINK_STATUS, &ok)
-	if ok != 1 {
-		gl.GetProgramInfoLog(shader_program, 1024, nil, erroLog)
-		fmt.print("Unable to link shader program: {}", erroLog)
-		os.exit(1)
-	}
+// 	ok: i32
+// 	erroLog: [^]u8 = {}
+// 	gl.LinkProgram(shader_program)
+// 	gl.GetProgramiv(shader_program, gl.LINK_STATUS, &ok)
+// 	if ok != 1 {
+// 		gl.GetProgramInfoLog(shader_program, 1024, nil, erroLog)
+// 		fmt.print("Unable to link shader program: {}", erroLog)
+// 		os.exit(1)
+// 	}
 
 
-	gWVPLocation = gl.GetUniformLocation(shader_program, "gWVP")
+// 	gWVPLocation = gl.GetUniformLocation(shader_program, "gWVP")
 
-	if gWVPLocation == -1 {
-		fmt.print("Error getting uniform location of gWVP")
-		os.exit(1)
-	}
+// 	if gWVPLocation == -1 {
+// 		fmt.print("Error getting uniform location of gWVP")
+// 		os.exit(1)
+// 	}
 
-	gl.ValidateProgram(shader_program)
-	gl.GetProgramiv(shader_program, gl.VALIDATE_STATUS, &ok)
-	if ok != 1 {
-		gl.GetProgramInfoLog(shader_program, 1024, nil, erroLog)
-		fmt.print("Unable to validate shader program: {}", erroLog)
-		os.exit(1)
-	}
+// 	gl.ValidateProgram(shader_program)
+// 	gl.GetProgramiv(shader_program, gl.VALIDATE_STATUS, &ok)
+// 	if ok != 1 {
+// 		gl.GetProgramInfoLog(shader_program, 1024, nil, erroLog)
+// 		fmt.print("Unable to validate shader program: {}", erroLog)
+// 		os.exit(1)
+// 	}
 
-	gl.UseProgram(shader_program)
+// 	gl.UseProgram(shader_program)
 
-	defer gl.DeleteProgram(shader_program)
-}
+// 	defer gl.DeleteProgram(shader_program)
+// }
 
-add_gpu_program :: proc(shader_program: u32, shader_text: string, shader_type: u32) {
-	shader_object: u32 = gl.CreateShader(shader_type)
-	if (shader_object == 0) {
-		fmt.println("Error creating shader")
-		os.exit(0)
-	}
-	data := strings.clone_to_cstring(shader_text, context.temp_allocator)
-	data_length : i32 = cast(i32)len(shader_text)
-	gl.ShaderSource(shader_object, 1, &data, &data_length)
-	gl.CompileShader(shader_object)
-	ok: i32
-	gl.GetShaderiv(shader_object, gl.COMPILE_STATUS, &ok)
-	if ok != 1 {
-		infoLog: [1024]u8
-		gl.GetShaderInfoLog(shader_object, 1024, nil, &infoLog[0])
-		fmt.println("Unable to compile shader: {}", shader_object)
-		fmt.eprintln(string(infoLog[0:len(infoLog)-1]))
-		delete_cstring(data, context.temp_allocator)
-		os.exit(0)
-	}
-	gl.AttachShader(shader_program, shader_object)
-}
+// add_gpu_program :: proc(shader_program: u32, shader_text: string, shader_type: u32) {
+// 	shader_object: u32 = gl.CreateShader(shader_type)
+// 	if (shader_object == 0) {
+// 		fmt.println("Error creating shader")
+// 		os.exit(0)
+// 	}
+// 	data := strings.clone_to_cstring(shader_text, context.temp_allocator)
+// 	data_length : i32 = cast(i32)len(shader_text)
+// 	gl.ShaderSource(shader_object, 1, &data, &data_length)
+// 	gl.CompileShader(shader_object)
+// 	ok: i32
+// 	gl.GetShaderiv(shader_object, gl.COMPILE_STATUS, &ok)
+// 	if ok != 1 {
+// 		infoLog: [1024]u8
+// 		gl.GetShaderInfoLog(shader_object, 1024, nil, &infoLog[0])
+// 		fmt.println("Unable to compile shader: {}", shader_object)
+// 		fmt.eprintln(string(infoLog[0:len(infoLog)-1]))
+// 		delete_cstring(data, context.temp_allocator)
+// 		os.exit(0)
+// 	}
+// 	gl.AttachShader(shader_program, shader_object)
+// }
 
 keyboardCB:: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods: i32) {
 	context = runtime.default_context()
