@@ -87,6 +87,8 @@ main :: proc() {
 
 	// Load OpenGL context or the "state" of OpenGL.
 	glfw.SetKeyCallback(window_handle, keyboardCB)
+	glfw.SetCursorPosCallback(window_handle, mouseCB)
+	glfw.SetInputMode(window_handle, glfw.CURSOR, glfw.CURSOR_DISABLED)
 	glfw.MakeContextCurrent(window_handle)
 	glfw.SwapInterval(1)
 	// Load OpenGL function pointers with the specficed OpenGL major and minor version.
@@ -98,7 +100,7 @@ main :: proc() {
 
 	create_vertex_buffer()
 	create_index_buffer()
-
+	
 	program_ok: bool;
 	program, program_ok = gl.load_shaders_source(vertex_shader, fragment_shader);
 	if !program_ok {
@@ -114,7 +116,7 @@ main :: proc() {
 		os.exit(1)
 	}
 	time.stopwatch_start(&watch)
-	
+	camera.constructCamera(&gameCamera)
 	for !glfw.WindowShouldClose(window_handle) {
 		// Process all incoming events like keyboard press, window resize, and etc.
 		glfw.PollEvents()
@@ -241,6 +243,11 @@ keyboardCB:: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods: i
 	if key == glfw.KEY_ESCAPE && action == glfw.PRESS {
 		glfw.SetWindowShouldClose(window, glfw.TRUE)
 	}
+}
+
+mouseCB:: proc "c" (window: glfw.WindowHandle, xpos: f64, ypos: f64) {
+	context = runtime.default_context()
+	camera.onMouse(cast(i32)xpos, cast(i32)ypos, &gameCamera)
 }
 
 // A function which simply converts colors specified in hex

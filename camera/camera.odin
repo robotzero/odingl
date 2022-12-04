@@ -3,6 +3,7 @@ package camera
 import "core:math"
 import "core:fmt"
 import "core:math/linalg"
+import "core:c/libc"
 import "vendor:glfw"
 
 MARGIN:i32 = 10
@@ -30,7 +31,7 @@ setCameraPosition::proc(x: f32, y: f32, z: f32, camera: ^Camera) {
 	camera.pos.z = z
 }
 
-constructCampera::proc(using self: ^Camera) {
+constructCamera::proc(using self: ^Camera) {
 	self.target = linalg.vector_normalize(self.target)
 	self.up = linalg.vector_normalize(self.up)
 
@@ -135,7 +136,43 @@ update::proc(using self: ^Camera) {
 	yaxis:= linalg.Vector3f32{0.0, 1.0, 0.0}
 	view:= linalg.Vector3f32{1.0, 0.0, 0.0}
 	
-	//view.rotate(self.angleH, yaxis)
+	rotationQ1:= linalg.quaternion_angle_axis_f32(self.angleH, yaxis)
+	v1: = linalg.mul(rotationQ1, view)
+	v1n: = linalg.vector_normalize(v1)
+
+	u:= linalg.cross(yaxis, v1n)
+	un: = linalg.vector_normalize(u)
+	rotationQ2:= linalg.quaternion_angle_axis_f32(self.angleV, un)
+	v2: = linalg.mul(rotationQ2, v1n)
+	self.target = linalg.vector_normalize(v2)
+	self.up = linalg.vector_normalize(linalg.vector_cross3(self.target, un))
+}
+
+onRender::proc(using self: ^Camera) {
+	shouldUpdate:= false
+	if self.onLeftEdge {
+		self.angleH -= EDGE_STEP
+		shouldUpdate = true
+	} else if self.onRightEdge {
+		angleH += EDGE_STEP
+		shouldUpdate = true
+	}
+
+	if self.onUpperEdge {
+		if self.angleV > -90.0 {
+			self.angleV -= EDGE_STEP
+			shouldUpdate = true
+		}
+	} else if self.onLowerEdge {
+		if self.angleV < 90.0 {
+			self.angleV += EDGE_STEP
+			shouldUpdate = true
+		}
+	}
+
+	if shouldUpdate {
+		update(self)
+	}
 }
 
 getMatrix::proc(gameCamera: Camera) -> linalg.Matrix4x4f32 {
