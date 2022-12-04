@@ -27,9 +27,9 @@ SCALE: f32 = 1.0
 DELTA: f32 = 0.01
 ANGLE_IN_RADIANS: f32 = 0.0
 LOC: f32 = 0.0
-FOV :: 45.0
-zNear :: 1.0
-zFar :: 10.0
+FOV : f32 = 45.0
+zNear : f32 =1.0
+zFar : f32 = 100.0
 watch            : time.Stopwatch
 // @note You might need to lower this to 3.3 depending on how old your graphics card is.
 GL_MAJOR_VERSION :: 4
@@ -93,11 +93,14 @@ main :: proc() {
 
 	create_vertex_buffer()
 	create_index_buffer()
-	//compile_gpu_program()
+
 	program_ok: bool;
 	program, program_ok = gl.load_shaders_source(vertex_shader, fragment_shader);
 	if !program_ok {
-		panic("failed to load and compiler shaders");
+		message, compile_type := gl.get_last_error_message()
+		fmt.println("failed to load and compile shaders")
+		fmt.println(message)
+		os.exit(1)
 	}
 	gl.UseProgram(program)
 	gWVPLocation = gl.GetUniformLocation(program, "gWVP")
@@ -119,27 +122,28 @@ render_scene :: proc() {
 	gl.ClearColor(RED, GREEN, BLUE, ALPHA)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-	YRoationAngle:f32 = 1.0
-	//setPosition(0.0, 0.0, 1.5)
-	//rotate(0.0, YRoationAngle, 0.0)
-	// world:= getMatrix()
-	// view:= camera.getMatrix(gameCamera)
-	// projection:= math3d.initPersProjTransform(projectionInfo)
-	FF : f32 = 45
-	thfov := math.tan_f32(math3d.toRadian(FF/2.0))
-	f := 1/thfov
-	ar :f32= cast(f32) WIDTH / cast(f32) HEIGHT
-	near: f32 = 1
-	far: f32 = 100
-	zrange: f32 = near - far
-	A: f32 = (-far - near) / zrange
-	B: f32 = 2.0 * far * near / zrange
-
-	SCALE += 0.02
-	
 	raw_duration        := time.stopwatch_duration(watch)
 	secs                := f32(time.duration_seconds(raw_duration))
 	theta               := f32(secs)
+
+	SCALE += 0.02
+	YRoationAngle:f32 = 1.0
+	setPosition(0.0, 0.0, 2.0)
+	rotate(0.0, YRoationAngle, 0.0)
+	world:= getMatrix()
+	view:= camera.getMatrix(gameCamera)
+	projection:= math3d.initPersProjTransform(projectionInfo)
+
+	final:= projection * view * world
+	// FF : f32 = 45
+	// thfov := math.tan_f32(math.to_radians_f32(FF/2.0))
+	// f := 1/thfov
+	// ar :f32= cast(f32) WIDTH / cast(f32) HEIGHT
+	// near: f32 = 1
+	// far: f32 = 100
+	// zrange: f32 = near - far
+	// A: f32 = (-far - near) / zrange
+	// B: f32 = 2.0 * far * near / zrange
 	
 	rotation:=linalg.Matrix4f32{
 		math.cos_f32(theta), 0.0, -math.sin_f32(theta), 0.0, 
@@ -153,13 +157,14 @@ render_scene :: proc() {
 		0.0, 0.0, 1.0, 2.0,
 		0.0, 0.0, 0.0, 1.0,
 	}
-	projection:=linalg.Matrix4f32{
-		f/ar, 0.0, 0.0, 0.0,
-		0.0, f, 0.0, 0.0,
-		0.0, 0.0, A, B,
-		0.0, 0.0, 1.0, 0.0,
-	}
-	final:=projection * translation * rotation
+	// projection:=linalg.Matrix4f32{
+	// 	f/ar, 0.0, 0.0, 0.0,
+	// 	0.0, f, 0.0, 0.0,
+	// 	0.0, 0.0, A, B,
+	// 	0.0, 0.0, 1.0, 0.0,
+	// }
+	//final:=projection * translation * rotation
+	//final:=projection * world
 	
 	gl.UniformMatrix4fv(gWVPLocation, 1, gl.FALSE, &final[0][0])
 
@@ -177,8 +182,6 @@ render_scene :: proc() {
 	gl.DrawElements(gl.TRIANGLES, 36, gl.UNSIGNED_INT, nil)
 	gl.DisableVertexAttribArray(0)
 	gl.DisableVertexAttribArray(1)
-
-	
 }
 
 create_vertex_buffer :: proc() {
@@ -226,83 +229,6 @@ create_index_buffer :: proc() {
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, IBO)
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(indices), &indices, gl.STATIC_DRAW)
 }
-
-// compile_gpu_program :: proc() {
-// 	shader_program: u32 = gl.CreateProgram()
-// 	if (shader_program == 0) {
-// 		fmt.println("Error creating shader program")
-// 		os.exit(0)
-// 	}
-// 	vertex_shader, okv := os.read_entire_file_from_filename("vertex.glsl")
-// 	if !okv {
-// 		fmt.println("Error creating shader program")
-// 		os.exit(1)
-// 	}
-	
-// 	add_gpu_program(shader_program, string(vertex_shader), gl.VERTEX_SHADER)
-// 	defer delete(vertex_shader, context.allocator)
-// 	fragment_shader, okf := os.read_entire_file_from_filename("fragment.glsl")
-
-// 	if !okf {
-// 		fmt.println("Error creating shader program")
-// 		os.exit(1)
-// 	}
-// 	add_gpu_program(shader_program, string(fragment_shader), gl.FRAGMENT_SHADER)
-// 	defer delete(fragment_shader, context.allocator)
-
-// 	ok: i32
-// 	erroLog: [^]u8 = {}
-// 	gl.LinkProgram(shader_program)
-// 	gl.GetProgramiv(shader_program, gl.LINK_STATUS, &ok)
-// 	if ok != 1 {
-// 		gl.GetProgramInfoLog(shader_program, 1024, nil, erroLog)
-// 		fmt.print("Unable to link shader program: {}", erroLog)
-// 		os.exit(1)
-// 	}
-
-
-// 	gWVPLocation = gl.GetUniformLocation(shader_program, "gWVP")
-
-// 	if gWVPLocation == -1 {
-// 		fmt.print("Error getting uniform location of gWVP")
-// 		os.exit(1)
-// 	}
-
-// 	gl.ValidateProgram(shader_program)
-// 	gl.GetProgramiv(shader_program, gl.VALIDATE_STATUS, &ok)
-// 	if ok != 1 {
-// 		gl.GetProgramInfoLog(shader_program, 1024, nil, erroLog)
-// 		fmt.print("Unable to validate shader program: {}", erroLog)
-// 		os.exit(1)
-// 	}
-
-// 	gl.UseProgram(shader_program)
-
-// 	defer gl.DeleteProgram(shader_program)
-// }
-
-// add_gpu_program :: proc(shader_program: u32, shader_text: string, shader_type: u32) {
-// 	shader_object: u32 = gl.CreateShader(shader_type)
-// 	if (shader_object == 0) {
-// 		fmt.println("Error creating shader")
-// 		os.exit(0)
-// 	}
-// 	data := strings.clone_to_cstring(shader_text, context.temp_allocator)
-// 	data_length : i32 = cast(i32)len(shader_text)
-// 	gl.ShaderSource(shader_object, 1, &data, &data_length)
-// 	gl.CompileShader(shader_object)
-// 	ok: i32
-// 	gl.GetShaderiv(shader_object, gl.COMPILE_STATUS, &ok)
-// 	if ok != 1 {
-// 		infoLog: [1024]u8
-// 		gl.GetShaderInfoLog(shader_object, 1024, nil, &infoLog[0])
-// 		fmt.println("Unable to compile shader: {}", shader_object)
-// 		fmt.eprintln(string(infoLog[0:len(infoLog)-1]))
-// 		delete_cstring(data, context.temp_allocator)
-// 		os.exit(0)
-// 	}
-// 	gl.AttachShader(shader_program, shader_object)
-// }
 
 keyboardCB:: proc "c" (window: glfw.WindowHandle, key, scancode, action, mods: i32) {
 	context = runtime.default_context()

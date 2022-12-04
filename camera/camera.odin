@@ -39,11 +39,11 @@ onKeyboard::proc (key: i32, camera: ^Camera) {
 			if camera.speed < 0.1 {
 				camera.speed = 0.1
 			}
-			fmt.println("Camera speed changed")
+			//fmt.println("Camera speed changed")
 		}
 		case glfw.KEY_RIGHT_BRACKET: {
 			camera.speed += 0.1
-			fmt.println("Camera speed changed")
+			//fmt.println("Camera speed changed")
 		}
 
 	}
@@ -58,7 +58,12 @@ initCameraTransform::proc(pos: linalg.Vector3f32, target: linalg.Vector3f32, up:
 }
 
 initTranslationTransform::proc(x: f32, y: f32, z: f32) -> linalg.Matrix4x4f32 {
-	return linalg.Matrix4f32{1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, x, y, z, 1.0}
+	return linalg.Matrix4f32{
+		1.0, 0.0, 0.0, x,
+		0.0, 1.0, 0.0, y,
+		0.0, 0.0, 1.0, z,
+		0.0, 0.0, 0.0, 1.0,
+	}
 }
 
 initCameraTransform2::proc(target: linalg.Vector3f32, up: linalg.Vector3f32) -> linalg.Matrix4x4f32 {
@@ -66,5 +71,10 @@ initCameraTransform2::proc(target: linalg.Vector3f32, up: linalg.Vector3f32) -> 
 	upN:= linalg.vector_normalize(up)
 	u:= linalg.vector_normalize(linalg.vector_cross3(upN, n))
 	v:= linalg.vector_cross3(n, u)
-	return linalg.Matrix4x4f32{u.x, v.x, n.x, 0.0, u.y, v.y, n.y, 0.0, u.z, v.z, n.z, 0.0, 0.0, 0.0, 0.0, 1.0}
+	return linalg.Matrix4x4f32{
+		u.x, u.y, u.z, 0.0,
+		v.z, v.y, v.z, 0.0,
+		n.x, n.y, n.z, 0.0,
+		0.0, 0.0, 0.0, 1.0,
+	}
 }
