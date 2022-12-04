@@ -25,7 +25,7 @@ BLUE	:: 0.0
 ALPHA	:: 0.0
 SCALE: f32 = 1.0
 FOV : f32 = 45.0
-zNear : f32 =1.0
+zNear : f32 = 1.0
 zFar : f32 = 100.0
 watch            : time.Stopwatch
 // @note You might need to lower this to 3.3 depending on how old your graphics card is.
@@ -35,7 +35,15 @@ VBO: u32
 IBO: u32
 gWVPLocation: i32
 projectionInfo: math3d.PersProjInfo = math3d.PersProjInfo{FOV, WIDTH, HEIGHT, zNear, zFar}
-gameCamera: camera.Camera = camera.Camera{1.0, linalg.Vector3f32{0.0, 0.0, 0.0}, linalg.Vector3f32{0.0, 0.0, 1.0}, linalg.Vector3f32{0.0, 1.0, 0.0}}
+cameraPos:= linalg.Vector3f32{0.0, 0.0, -1.0}
+cameraTarget:= linalg.Vector3f32{0.0, 0.0, 1.0}
+cameraUp: = linalg.Vector3f32{0.0, 1.0, 0.0}
+gameCamera: camera.Camera = camera.Camera{
+	1.0, WIDTH, HEIGHT,
+	//linalg.Vector3f32{0.0, 0.0, 0.0}, linalg.Vector3f32{0.0, 0.0, 1.0}, linalg.Vector3f32{0.0, 1.0, 0.0},
+	cameraPos, cameraTarget, cameraUp,
+	0, 0, false, false, false, false, linalg.Vector2f32{0.0, 0.0},
+}
 program: u32
 vertex_shader:= string(#load("vertex.glsl"))
 fragment_shader:= string(#load("fragment.glsl"))

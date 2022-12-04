@@ -104,3 +104,7 @@ initPersProjTransform::proc(projectionInfo: PersProjInfo) -> linalg.Matrix4f32 {
 	// 	0.0, 0.0, 1.0, 0.0,
 	// }
 }
+
+rotateVector::proc(angle: f32, v: ^linalg.Vector3f32) {
+	
+}
