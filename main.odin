@@ -24,9 +24,6 @@ GREEN	:: 0.0
 BLUE	:: 0.0
 ALPHA	:: 0.0
 SCALE: f32 = 1.0
-DELTA: f32 = 0.01
-ANGLE_IN_RADIANS: f32 = 0.0
-LOC: f32 = 0.0
 FOV : f32 = 45.0
 zNear : f32 =1.0
 zFar : f32 = 100.0
@@ -145,18 +142,18 @@ render_scene :: proc() {
 	// A: f32 = (-far - near) / zrange
 	// B: f32 = 2.0 * far * near / zrange
 	
-	rotation:=linalg.Matrix4f32{
-		math.cos_f32(theta), 0.0, -math.sin_f32(theta), 0.0, 
-		0.0, 1.0, 0.0, 0.0, 
-		math.sin_f32(theta), 0.0, math.cos_f32(theta), 0.0,
-		0.0, 0.0, 0.0, 1.0,
-	}
-	translation:=linalg.Matrix4f32{
-		1.0, 0.0, 0.0, 0.0, 
-		0.0, 1.0, 0.0, 0.0,
-		0.0, 0.0, 1.0, 2.0,
-		0.0, 0.0, 0.0, 1.0,
-	}
+	// rotation:=linalg.Matrix4f32{
+	// 	math.cos_f32(theta), 0.0, -math.sin_f32(theta), 0.0, 
+	// 	0.0, 1.0, 0.0, 0.0, 
+	// 	math.sin_f32(theta), 0.0, math.cos_f32(theta), 0.0,
+	// 	0.0, 0.0, 0.0, 1.0,
+	// }
+	// translation:=linalg.Matrix4f32{
+	// 	1.0, 0.0, 0.0, 0.0, 
+	// 	0.0, 1.0, 0.0, 0.0,
+	// 	0.0, 0.0, 1.0, 2.0,
+	// 	0.0, 0.0, 0.0, 1.0,
+	// }
 	// projection:=linalg.Matrix4f32{
 	// 	f/ar, 0.0, 0.0, 0.0,
 	// 	0.0, f, 0.0, 0.0,
