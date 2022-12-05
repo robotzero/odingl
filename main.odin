@@ -12,6 +12,7 @@ import "core:math"
 import gl "vendor:OpenGL"
 import "math3d"
 import "camera"
+import "texture"
 import "core:math/rand"
 
 WIDTH  	:: 2560
@@ -24,7 +25,7 @@ GREEN	:: 0.0
 BLUE	:: 0.0
 ALPHA	:: 0.0
 SCALE: f32 = 1.0
-FOV : f32 = 45.0
+FOV : f32 = 90.0
 zNear : f32 = 1.0
 zFar : f32 = 100.0
 watch            : time.Stopwatch
@@ -35,15 +36,16 @@ VBO: u32
 IBO: u32
 gWVPLocation: i32
 projectionInfo: math3d.PersProjInfo = math3d.PersProjInfo{FOV, WIDTH, HEIGHT, zNear, zFar}
-cameraPos:= linalg.Vector3f32{0.0, 0.0, -1.0}
+cameraPos:= linalg.Vector3f32{0.0, 0.0, 0.0}
 cameraTarget:= linalg.Vector3f32{0.0, 0.0, 1.0}
 cameraUp: = linalg.Vector3f32{0.0, 1.0, 0.0}
 gameCamera: camera.Camera = camera.Camera{
 	1.0, WIDTH, HEIGHT,
-	//linalg.Vector3f32{0.0, 0.0, 0.0}, linalg.Vector3f32{0.0, 0.0, 1.0}, linalg.Vector3f32{0.0, 1.0, 0.0},
 	cameraPos, cameraTarget, cameraUp,
 	0, 0, false, false, false, false, linalg.Vector2f32{0.0, 0.0},
 }
+gameTexture: texture.Texture
+
 program: u32
 vertex_shader:= string(#load("vertex.glsl"))
 fragment_shader:= string(#load("fragment.glsl"))
@@ -115,6 +117,11 @@ main :: proc() {
 		fmt.print("Error getting uniform location of gWVP")
 		os.exit(1)
 	}
+	gameTexture = texture.Texture{
+		gl.TEXTURE_2D, 0, 0, 0, 0, "content/bricks.jpg",
+	}
+	texture.load(&gameTexture)
+
 	time.stopwatch_start(&watch)
 	camera.constructCamera(&gameCamera)
 	for !glfw.WindowShouldClose(window_handle) {
@@ -128,6 +135,7 @@ main :: proc() {
 render_scene :: proc() {
 	gl.ClearColor(RED, GREEN, BLUE, ALPHA)
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	camera.onRender(&gameCamera)
 
 	raw_duration        := time.stopwatch_duration(watch)
 	secs                := f32(time.duration_seconds(raw_duration))

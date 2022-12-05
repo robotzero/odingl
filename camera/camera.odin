@@ -39,7 +39,7 @@ constructCamera::proc(using self: ^Camera) {
 }
 
 init::proc(using self: ^Camera) {
-	htarget:= linalg.Vector3f32{self.target.x, 0.0, self.target.y}
+	htarget:= linalg.vector_normalize(linalg.Vector3f32{self.target.x, 0.0, self.target.z})
 	angle := math.to_degrees_f32(math.asin(math.abs(htarget.z)))
 
 	if htarget.z >= 0.0 {
@@ -114,8 +114,8 @@ onMouse::proc (x: i32, y: i32, using self: ^Camera) {
 			self.onRightEdge = true
 		}
 	} else {
-		self.onLeftEdge = true
-		self.onRightEdge = true
+		self.onLeftEdge = false
+		self.onRightEdge = false
 	}
 
 	if deltay == 0 {
@@ -125,8 +125,8 @@ onMouse::proc (x: i32, y: i32, using self: ^Camera) {
 			self.onLowerEdge = true
 		}
 	} else {
-		self.onUpperEdge = true
-		self.onLowerEdge = true
+		self.onUpperEdge = false
+		self.onLowerEdge = false
 	}
 
 	update(self)
@@ -154,7 +154,7 @@ onRender::proc(using self: ^Camera) {
 		self.angleH -= EDGE_STEP
 		shouldUpdate = true
 	} else if self.onRightEdge {
-		angleH += EDGE_STEP
+		self.angleH += EDGE_STEP
 		shouldUpdate = true
 	}
 
