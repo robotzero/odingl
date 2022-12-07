@@ -2,6 +2,7 @@
 
 in vec4 Color;
 out vec4 FragColor;
+uniform sampler2D gSampler;
 
 void main()
 {

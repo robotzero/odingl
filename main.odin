@@ -35,6 +35,7 @@ GL_MINOR_VERSION :: 6
 VBO: u32
 IBO: u32
 gWVPLocation: i32
+gSamplerLocation: i32
 projectionInfo: math3d.PersProjInfo = math3d.PersProjInfo{FOV, WIDTH, HEIGHT, zNear, zFar}
 cameraPos:= linalg.Vector3f32{0.0, 0.0, 0.0}
 cameraTarget:= linalg.Vector3f32{0.0, 0.0, 1.0}
@@ -52,15 +53,7 @@ fragment_shader:= string(#load("fragment.glsl"))
 
 Vertex :: struct {
 	pos: linalg.Vector3f32,
-	color: linalg.Vector3f32,
-}
-
-vertex :: proc(x: f32, y: f32, z: f32, using self: ^Vertex) {
-	self.pos = linalg.Vector3f32{x, y, z}
-	red: f32 = rand.float32()
-	green: f32 = rand.float32()
-	blue: f32 = rand.float32()
-	self.color = linalg.Vector3f32{red, green, blue}
+	tex: linalg.Vector2f32,
 }
 
 main :: proc() {
@@ -186,13 +179,17 @@ render_scene :: proc() {
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, IBO)
 
+	// texture
+	texture.bind(gl.TEXTURE0, &gameTexture)
+	gl.Uniform1i(gSamplerLocation, 0)
+
 	// position
 	gl.EnableVertexAttribArray(0)
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 6 * size_of(f32), 0)
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 5 * size_of(f32), 0)
 
-	// color
+	// texture coords
 	gl.EnableVertexAttribArray(1)
-	gl.VertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 6 * size_of(f32), 3 * size_of(f32))
+	gl.VertexAttribPointer(1, 2, gl.FLOAT, gl.FALSE, 5 * size_of(f32), 3 * size_of(f32))
 
 	gl.DrawElements(gl.TRIANGLES, 36, gl.UNSIGNED_INT, nil)
 	gl.DisableVertexAttribArray(0)
@@ -200,23 +197,21 @@ render_scene :: proc() {
 }
 
 create_vertex_buffer :: proc() {
-	v1:= Vertex{}
-	vertex(0.5, 0.5, 0.5, &v1)
-	v2:= Vertex{}
-	vertex(-0.5, 0.5, -0.5, &v2)
-	v3:= Vertex{}
-	vertex(-0.5, 0.5, 0.5, &v3)
-	v4:= Vertex{}
-	vertex(0.5, -0.5, -0.5, &v4)
-	v5:= Vertex{}
-	vertex(-0.5,-0.5, -0.5, &v5)
-	v6:= Vertex{}
-	vertex(0.5, 0.5, -0.5, &v6)
-	v7:= Vertex{}
-	vertex(0.5, -0.5, 0.5, &v7)
-	v8:= Vertex{}
-	vertex(-0.5, -0.5, 0.5, &v8)
+	t00 := linalg.Vector2f32{0.0, 0.0}  // Bottom left
+	t01 := linalg.Vector2f32{0.0, 1.0}  // Top left
+	t10 := linalg.Vector2f32{1.0, 0.0}  // Bottom right
+	t11 := linalg.Vector2f32{1.0, 1.0}  // Top right
 
+	
+	v1:= Vertex{linalg.Vector3f32{0.5, 0.5, 0.5}, t00}
+	v2:= Vertex{linalg.Vector3f32{-0.5, 0.5, -0.5}, t01}
+	v3:= Vertex{linalg.Vector3f32{-0.5, 0.5, 0.5}, t10}
+	v4:= Vertex{linalg.Vector3f32{0.5, -0.5, -0.5}, t11}
+	v5:= Vertex{linalg.Vector3f32{-0.5,-0.5, -0.5}, t00}
+	v6:= Vertex{linalg.Vector3f32{0.5, 0.5, -0.5}, t10}
+	v7:= Vertex{linalg.Vector3f32{0.5, -0.5, 0.5}, t01}
+	v8:= Vertex{linalg.Vector3f32{-0.5, -0.5, 0.5}, t11}
+	
 	vertices := [8]Vertex{v1, v2, v3, v4, v5, v6, v7, v8}
 
 	gl.GenBuffers(1, &VBO)
