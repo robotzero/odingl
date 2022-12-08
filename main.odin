@@ -24,7 +24,6 @@ RED 	:: 0.0
 GREEN	:: 0.0
 BLUE	:: 0.0
 ALPHA	:: 0.0
-SCALE: f32 = 1.0
 FOV : f32 = 90.0
 zNear : f32 = 1.0
 zFar : f32 = 100.0
@@ -134,7 +133,6 @@ render_scene :: proc() {
 	secs                := f32(time.duration_seconds(raw_duration))
 	theta               := f32(secs)
 
-	SCALE += 0.02
 	YRoationAngle:f32 = 1.0
 	setPosition(0.0, 0.0, 2.0)
 	rotate(0.0, YRoationAngle, 0.0)
@@ -252,13 +250,3 @@ mouseCB:: proc "c" (window: glfw.WindowHandle, xpos: f64, ypos: f64) {
 	context = runtime.default_context()
 	camera.onMouse(cast(i32)xpos, cast(i32)ypos, &gameCamera)
 }
-
-// A function which simply converts colors specified in hex
-// to a triple of floats ranging from 0 to 1.
-rgbHexToFractions :: proc( hex_color : int ) -> ( ret : [3] f32 ) {
-	ret.r = f32( (hex_color & 0x00_FF_00_00) >> 16 )
-	ret.g = f32( (hex_color & 0x00_00_FF_00) >> 8  )
-	ret.b = f32( (hex_color & 0x00_00_00_FF) >> 0  )
-	ret *= 1.0/255
-	return 
-    }
