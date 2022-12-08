@@ -2,6 +2,7 @@ package texture
 
 import "core:fmt"
 import "core:strings"
+import "core:os"
 import stbi "vendor:stb/image"
 import "vendor:glfw"
 import gl "vendor:OpenGL"
@@ -15,7 +16,6 @@ Texture :: struct {
 	filename: string,
 }
 
-//@TODO does it have to be a pointer of using is enough?
 load :: proc(using self: ^Texture) -> bool {
 	input_cstring := strings.clone_to_cstring(self.filename);
 
